@@ -31,15 +31,38 @@ startup_32:
 	mov 	%ax, %gs
 	lss	stack_ptr, %esp
 
-	mov	$0x18, %ax		# GDT[3] - video memory descriptor
-	mov	%ax, %gs	 
-	movb	$'A, %al
-	movb	%al, %gs:0		# print 'A'
-	movb	$0x2f, %al		# green - white
-	movb	%al, %gs:1
+	push	$0x2f			# pass parameter 2 to the proc: VGA attribute
+	push	$'A			# pass parameter 1 to the proc: the ASCII of the char
+	call	write_char
+	addl 	$8, %esp		# cleanup the stack!
 
 hang: 
 	jmp	hang
+
+######################################### * write_char 
+					# Note: We use here the traditional sub-program call convensions!
+ 
+write_char:
+	pushl	%ebp			# save old EBP
+	movl 	%esp, %ebp		# EBP is used as a Base Pointer to locate parameters and local 
+					# data in the stack frame of a sub-program! 
+
+	push	%eax			# save the context of the caller main program!
+	push	%gs
+
+	mov	$0x18, %ax		# GDT[3] - video memory
+	mov	%ax, %gs	
+	movl 	8(%ebp), %eax		# get the ASCII of the character from the stack
+	movb	%al, %gs:0		# print 'A'
+	movb	12(%ebp), %al		# and get the attribute
+	movb	%al, %gs:1		# green - white
+
+	pop	%gs			# restore the context
+	pop	%eax
+
+	movl	%ebp, %esp
+	popl	%ebp			# restore old EBP: destruct the stack frame allocated to the sub-prog
+	ret
 
 ######################################### * GDT: granularity = 1 => segment size = limit * 4Kb
 
