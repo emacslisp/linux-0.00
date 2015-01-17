@@ -31,7 +31,7 @@ _start:
 BOOTSEG = 0x07c0
 INITSEG = 0x9000
 SYSSEG  = 0x1000			# system loaded at 0x10000 (65536).
-SYSSIZE = 0				# forget it right now :)
+SYSSIZE = 10				# >= size of 'Image' in sectors (512 bytes)
 
 ######################################### * move boot.s at 0x1000
 
@@ -169,8 +169,6 @@ end_move:
 	.word	0x00eb, 0x00eb
 	outb	%al, $0xA1
 	.word	0x00eb, 0x00eb
-
-hang:	jmp hang			# stay in real mode, to not end with a triple fault :)
 
 ######################################### * well, that certainly wasn't fun :-(. Hopefully it works, and we don't
 					# need no steenking BIOS anyway (except for the initial loading :-).
