@@ -31,21 +31,22 @@ startup_32:
 	mov 	%ax, %gs
 	lss	stack_ptr, %esp
 
-	mov	$0xb8000, %edi		# in text mode: video (VGA) memory begins at 0xb8000 (32-Kb)  
-	movb	$'A, %al		# print 'A'
-	movb	%al, (%edi)
-	inc	%edi
+	mov	$0x18, %ax		# GDT[3] - video memory descriptor
+	mov	%ax, %gs	 
+	movb	$'A, %al
+	movb	%al, %gs:0		# print 'A'
 	movb	$0x2f, %al		# green - white
-	movb	%al, (%edi)
+	movb	%al, %gs:1
 
 hang: 
 	jmp	hang
 
-######################################### * GDT
+######################################### * GDT: granularity = 1 => segment size = limit * 4Kb
 
 gdt:	.quad	0x0000000000000000	# NULL descriptor!
 	.quad	0x00c09a00000007ff	# 8Mb code segment (CS=0x08), base = 0x0000
 	.quad	0x00c09200000007ff	# 8Mb data segment (DS=SS=0x10), base = 0x0000
+	.quad	0x00c0920b80000001	# 4Kb video memory (Sel=0x18): base = 0xb8000 - 25*80 text mode 
 
 gdt_ptr:
 	.word	. - gdt -1		# Limit: GDT size
@@ -61,5 +62,5 @@ stack_ptr:				# ESP initially points to the bottom of the stack - the stack grow
 
 #########################################
 
-	.fill 128, 4, 0			# without this I got a triple fault, and I don't now why :)
+	.fill 128, 4, 0
 
