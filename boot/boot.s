@@ -31,7 +31,7 @@ _start:
 BOOTSEG = 0x07c0
 INITSEG = 0x9000
 SYSSEG  = 0x1000			# system loaded at 0x10000 (65536).
-SYSSIZE = 10				# >= size of 'Image' in sectors (512 bytes)
+SYSSIZE = 40				# >= size of 'Image' in sectors (512 bytes)
 
 ######################################### * move boot.s at 0x1000
 

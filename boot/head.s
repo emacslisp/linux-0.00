@@ -1,22 +1,20 @@
- /* 
-	kernel.s 
-
-   A 32 bit code, running in 386 protected mode. It will setup IDT, GDT, 
-   segment registres, enable interrupts and transfer the control 
-   to a user mode (level 3) task which will just print 'A' on
-   the screen.
-
-   copyright(C) 2015 Issam Abdallah, Tunisia.
-   E-mail: iabdallah@yandex.com
-
-   License: GPL
-
+/* 
+ *	head.s 
+ *
+ *  A 32 bit code, running in 386 protected mode. It will setup IDT, GDT, 
+ *  segment registres, enable interrupts and call the main function.
+ *
+ *  Copyright(C) 2015 Issam Abdallah, Tunisia.
+ *  E-mail: iabdallah@yandex.com
+ *
+ *  License: GPL
+ *
 */
 
 TSS_SEL = 0x20
 LDT_SEL = 0x28
 
-	.global	startup_32
+	.global	startup_32, gdt, idt, task
 	.text
 
 startup_32:
@@ -26,20 +24,7 @@ startup_32:
 	mov 	%ax, %es
 	mov 	%ax, %fs 
 	mov 	%ax, %gs
-	lss	kern_stack_ptr, %esp	# load SS and ESP
-
-
-######################################### * setup base fields of descriptors 5 and 6 in GDT
-
-	lea	gdt, %ecx		# LEA: load effective address
-
-	lea	tss, %eax
-	movl	$TSS_SEL, %edi		# TSS_SEL = 0x20
-	call	set_tssldt_des
-
-	lea	ldt, %eax
-	movl	$LDT_SEL, %edi		# LDT_SEL = 0x28
-	call	set_tssldt_des
+	lss	stack_start, %esp	# load SS and ESP to point to the task's kernel stack! 
 
 ######################################### * setup GDT and IDT
 
@@ -53,7 +38,7 @@ startup_32:
 	mov 	%ax, %es
 	mov 	%ax, %fs 
 	mov 	%ax, %gs
-	lss	kern_stack_ptr, %esp
+	lss	stack_start, %esp
 
 ######################################### * Move to user mode (task)
 ## NOTE: IRET will cause the processor to automatically switch to another task if NT=1! 
@@ -62,25 +47,8 @@ startup_32:
 	andl	$0xffffbfff, (%esp)	# ensure that NT is clear (NT = 0)! 
 	popfl
 
-	movl	$TSS_SEL, %eax
-	ltr	%ax			# Load task register
-	movl	$LDT_SEL, %eax
-	lldt	%ax 			# load LDTR
+	call	main			# main.c
 
-	sti				# IDT is setup, so we can enable interrupts now
- 
-######################################### * stack layout before IRET with privilege transition - see 80386's manual!
-
-	pushl	$0x17			# task's SS
-	pushl	$stack_ptr		# task's ESP
-	pushfl				# task's EFLAGS
-	pushl	$0x0f			# task's CS
-	pushl	$task			# task's EIP
-
-######################################### move to user mode and execute the task by loading EIP, CS, EFLAGS, ESP and SS 
-					# by the values previously pushed into the stack
-	iret				 
-					
 #########################################
 
 setup_gdt:
@@ -133,19 +101,8 @@ ignore_int:
 	nop				# do nothing when an interrupt occurs ...
 	iret				# just tickle the processor :)
 
-######################################### * This proc will set the bases fileds
-					# of TSS and LDT descriptors in GDT with
-					# the adresses 'tss' and 'ldt' at runtime.
-set_tssldt_des:
-
-	addl	%ecx, %edi		# ECX = gdt
-	movw	%ax, 2(%edi)		# base 0..15
-	rorl	$16, %eax
-	movb	%al, 4(%edi)		# base 16..23
-	movb	%ah, 7(%edi)		# base 31..24
-	ret
-
 ######################################### * Setup IDT
+
 	.balign	8			# align to 8 bytes to increase IDT access speed - (only 1 bus cycle)
 idt:	.fill	256, 8, 0		# reserve 256 idt entries - (IDT is not yet initialized!)
 
@@ -160,54 +117,13 @@ gdt:	.quad	0x0000000000000000	# NULL descriptor!
 	.quad	0x00c09a00000007ff	# 8Mb code segment (CS=0x08), base = 0x0000
 	.quad	0x00c09200000007ff	# 8Mb data segment (DS=SS=0x10), base = 0x0000
 	.quad	0x00c0f20b80000001	# 4Kb video memory (Sel=0x18) - with ** DPL=3! ** 
-	.quad	0x0000890000000068	# TSS descriptor (Selector = 0x20) - Granularity = 0
-	.quad	0x0000820000000040	# LDT descr (Selector = 0x28) - Granularity = 0
+	.quad	0x0000000000000000	# TSS_SEL
+	.quad	0x0000000000000000	# LDT_SEL
 
 gdt_ptr:
 	.word	. - gdt -1		# Limit
 	.long	gdt			# Base: pointer to the first GDT entry (the NULL descr) 
 	
-######################################### * kernel stack (level-0)
-
-	.balign	4
-	.fill 128, 4, 0			# reserve 32 words for the kernel stack
-kern_stack_ptr:
-	.long .				# ESP
-	.word 0x10			# SS
-
-######################################### * the task's LDT
-
-	.balign 8
-ldt:	.quad	0x0000000000000000
-	.quad	0x00c0fa00000007ff	# the task's local code segment (CS = 0x0f)
-	.quad	0x00c0f200000007ff	# the task's local data segment (DS = SS = 0x17)
-
-######################################### * the task's TSS
-
-tss:
-	.long	0 			# back link = 0 (no previous TSS)
-	.long	stack_ptr0		# esp0
-	.long	0x10			# ss0
-	.long	0			# esp1
-	.long	0			# ss1
-	.long	0			# esp2
-	.long	0			# ss2 
-	.long	0			# cr3 (paging is disabled!)
-	.long	task			# eip
-	.long	0x200			# eflags
-	.long	0, 0, 0, 0		# eax, ecx, edx, ebx
-	.long	stack_ptr		# esp (level 3 stack pointer)
-	.long	0, 0, 0			# ebp, esi, edi 
-	.long	0x17			# es
-	.long   0x0f			# cs
-	.long	0x17			# ss (level 3 stack)
-	.long	0x17,0x17,0x17		# ds, fs, gs
-	.long	LDT_SEL			# ldt selector
-	.long	0x8000000		# I/O map base + T-bit
-
-task_stack0:
-	.fill	128,4,0
-stack_ptr0:				# task is ESP0
 
 ######################################### * the task's purpose
 
@@ -221,11 +137,4 @@ task:
 	movb	%bl, %gs:1
 
 1:	jmp	1b			# stay here!
-
-######################################### * the task's level-3 stack
-
-task_stack:
-	.fill	128,4,0
-stack_ptr:				# ESP3
-
 

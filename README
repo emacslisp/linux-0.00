@@ -13,11 +13,13 @@
     RE-initialize the protected mode in it's own tables, and enable
     interrupts as needed.
 
- - kernel.s
+ - main.c
 
-    kernel.s is a small kernel that run in 32-bit protected mode. 
-    It will setup GDT, IDT switch to user mode and execute a simple user task 
-    which will print a 'A' on the screen.
+    Is called from head.s to iitialize the system and switch to user mode.
+
+ - kernel.c
+
+    Will setup the stack and LDT and TSS descriptors in GDT.
 
  - booting the system
 

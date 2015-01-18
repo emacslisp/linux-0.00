@@ -1,7 +1,9 @@
 .directory
 *~
 *.o
-boot
-kernel
+boot/*~
+boot/*.o
+boot/boot
+system
 Image
 system.map 

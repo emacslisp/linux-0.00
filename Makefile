@@ -1,23 +1,30 @@
-
+CFLAGS 	= -W -Wall -Wno-main -fomit-frame-pointer -nostdinc -Iinclude 
+SYSOBJS = boot/head.o kernel.o main.o
 
 all: Image
 
-Image: boot kernel
-	cat boot kernel > Image
+Image: boot/boot system
+	cat boot/boot system > Image
 	sync
 
-boot: boot.o
-	ld -Ttext 0 -Tdata 7c00 --oformat binary boot.o -o boot
+boot/boot: boot/boot.o
+	ld -Ttext 0 -Tdata 7c00 --oformat binary boot/boot.o -o boot/boot
 
-boot.o: boot.s
-	as boot.s -o boot.o
+boot/boot.o: boot/boot.s
+	as boot/boot.s -o boot/boot.o
 
-kernel: kernel.o
-	ld -M -Ttext 0 -e startup_32 --oformat binary kernel.o -o kernel > system.map
+system: $(SYSOBJS)
+	ld -M -Ttext 0 -e startup_32 --oformat binary $(SYSOBJS) -o system > system.map
 
-kernel.o: kernel.s
-	as kernel.s -o kernel.o
+boot/head.o: boot/head.s
+	as boot/head.s -o boot/head.o
+
+main.o: main.c
+	cc -c $(CFLAGS) main.c -o main.o
+
+kernel.o: kernel.c head.h kernel.h
+	cc -c $(CFLAGS) kernel.c -o kernel.o
 
 clean:
-	@rm -fv boot.o kernel.o boot kernel *~
+	@rm -fv $(SYSOBJS) boot/boot.o boot/boot system *~ boot/*~
  
