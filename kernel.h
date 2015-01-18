@@ -3,8 +3,34 @@
 
 #include "head.h"
 
-extern long task;
+#define TIMER_FREQ 1193180	/* timer (INTEL 8253 PIT) oscillator frequency */
+#define HZ 100			/* 100 timer interrupts per second */
 
+#define LATCH (TIMER_FREQ/HZ)   /* The timer will decrement by one this value each T = 0.000838 ms.
+				 When it becomes equal to 0, the PIT will generate a timer interrupt (IRQ0)*/
+
+/* video mode: 80x25 16 colors text mode.
+ * That is, we can display only 2000 characters ('A' and 'B') at once.
+*/
+#define SCREEN	2000
+
+/* 
+* To be displayed, each character will take 2 bytes in the VGA memory
+* 1 byte to write its ASCII code (even adresses: 0, 2, 4, 6,...)- 
+* 1 byte to write its attribute (odd adresses:     1, 3, 5 ,7,...)
+* That is, we will use 4000 bytes in the VGA memory.
+*/
+#define VGA_MEM SCREEN*2
+
+extern long task0;
+extern long task1;
+
+char * vga_ptr;
+int char_pos;
+int current;
+
+void schedule (void);
+void sys_write(char msg, char attr);
 void kernel_init(void);
 
 struct tss_struct {
@@ -40,8 +66,8 @@ struct task_struct {
 	struct tss_struct tss;
 };
 
-/* task */
-#define INIT_TASK		\
+/* task0 */
+#define TASK0			\
 {				\
 /*ldt*/	{ 			\
 	 {0,0}, 		\
@@ -57,10 +83,10 @@ struct task_struct {
 /* esp2 */	0,		\
 /* ss2 */	0,		\
 /* cr3 */	0,		\
-/* eip */	(long)&task,	\
+/* eip */	(long)&task0,	\
 /*eflags*/	0,		\
 /*eax, ecx,*/	0,0,0,0,	\
-/* esp */	(long)&task_stack3[STACK_SIZE>>2], \
+/* esp */	(long)&task0_stack[STACK_SIZE>>2], \
 /*ebp,esi,edi*/	0,0,0,		\
 /* es */	0x17,		\
 /* cs*/		0x0f,		\
@@ -69,6 +95,37 @@ struct task_struct {
 /* LDT*/	LDT(0),		\
 	 	0x80000000	\
 	}			\
+}
+
+/* task1 */
+#define TASK1			\
+{				\
+/*ldt*/	{ 			\
+	 {0,0}, 		\
+/*code*/ {0x7ff,0x00c0fa00}, 	\
+/*data*/ {0x7ff,0x00c0f200}	\
+	},			\
+/*tss*/	{					\
+/* back link*/	0,				\
+/* esp0 */	STACK_SIZE+(long)&second_task,	\
+/* ss0 */	0x10,				\
+/* esp1 */	0,				\
+/* ss1 */	0,				\
+/* esp2 */	0,				\
+/* ss2 */	0,				\
+/* cr3 */	0,				\
+/* eip */	(long)&task1,			\
+/*eflags*/	0x200,				\
+/*eax, ecx,*/	0,0,0,0,			\
+/* esp */	(long)&task1_stack[STACK_SIZE>>2],\
+/*ebp,esi,edi*/	0,0,0,				\
+/* es */	0x17,				\
+/* cs*/		0x0f,				\
+/* ss */	0x17,				\
+/* ds,fs,gs */	0x17,0x17,0x17,			\
+/* LDT*/	LDT(1),				\
+	 	0x80000000			\
+	}					\
 }
 
 /*
@@ -90,8 +147,22 @@ __asm__ __volatile__(		\
 	"lldt %%ax"		\
 	 ::"a" (LDT(n)))
 
+/* switch_to(n) should switch tasks to task n. */
 
-/*		System segment descriptor
+#define switch_to(n)		  \
+{				  \
+struct {long a,b;} __tmp; 	  \
+__asm__ __volatile__(		  \
+	"movw %%dx,%1\n\t"	  \
+	"ljmp *%0\n\t" 		  \
+	"1:" 			  \
+	::"m" (*&__tmp.a),	  \
+	  "m" (*&__tmp.b), 	  \
+	"d" TSS(n));		  \
+}
+
+/*		
+	System segment descriptor
   _____________________________________________________________
   |		| | | |A| Limit	| |   | |       |             |
   | BASE 31..24 |G|X|0|V|19..16	|P|DPL|0| TYPE  | Base 23..16 | <-- EDX
@@ -167,5 +238,7 @@ __asm__ __volatile__(					\
 	"o" (*((char *) (gate_addr))), 			\
 	"o" (*(4+(char *) (gate_addr))), 		\
 	"d" ((char *) (addr)),"a" (0x00080000))
+
+#define set_intr_gate(n,addr) _set_gate(&idt[n],14,0,addr) // to set up timer interrupt
 
 #endif 

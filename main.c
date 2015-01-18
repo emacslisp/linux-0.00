@@ -28,7 +28,7 @@ __asm__ __volatile__(			\
 	"movw %%ax,%%es\n\t" 		\
 	"movw %%ax,%%fs\n\t" 		\
 	"movw %%ax,%%gs\n" 		\
-	"jmp task"\
+	"jmp task0"\
 	:::"eax")
 
 #define sti() __asm__ __volatile__("\tsti"::)

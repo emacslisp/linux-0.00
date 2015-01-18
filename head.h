@@ -6,7 +6,7 @@ typedef struct desc_struct {
 } desc_table[256];
 
 extern desc_table idt;
-extern struct desc_struct gdt[6];
+extern struct desc_struct gdt[8];
 
 #define GDT_NUL 0
 #define GDT_CODE 1

@@ -1,7 +1,20 @@
 
- This is a rewriting of the linux-0.01 boot.s, using the 
- GNU assembler syntax with some modifications in the code.
+ 		Issam Abdallah, Tunisia.
+ 		  iabdallah@yandex.com
 
+		** linux-0.00 **
+
+  This is an implementation of linux-0.00, the first linux version developped
+  by Linus Torvalds and it was abandoned.
+
+	" it switched between two processes that printed AAAA... and BBBB... respectively 
+	  by using the timer-interrupt - Gods I was proud over that" --- Linus Torvalds
+
+  Two level-3 tasks run in user mode, scheduled by the timer interrupt and use a
+  system call to print 'A' and 'B' on the screen. As we don't have a fork and execve system calls
+  and even a file system (to load an executable from the disk into the memory and execute it), 
+  the two tasks are coded into the kernel's source code!
+ 
  - boot.s
 
     boot.s is loaded at 0x7c00 by the bios-startup routines, and moves itself
@@ -19,11 +32,12 @@
 
  - kernel.c
 
-    Will setup the stack and LDT and TSS descriptors in GDT.
+    Will setup the stack and LDT and TSS descriptors in GDT, program the timer
+    and setup IDT entries for system call and timer interrupt.
 
  - system_call.s
    
-    contains the system call handler routine and the task.
+    contains the system call handler routine, the timer_interrupt routine and the tasks.
 
  - booting the system
 

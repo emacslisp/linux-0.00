@@ -114,8 +114,10 @@ gdt:	.quad	0x0000000000000000	# NULL descriptor!
 	.quad	0x00c09a00000007ff	# 8Mb code segment (CS=0x08), base = 0x0000
 	.quad	0x00c09200000007ff	# 8Mb data segment (DS=SS=0x10), base = 0x0000
 	.quad	0x00c0920b80000001	# 4Kb video memory (Sel=0x18) - with ** DPL=0! ** 
-	.quad	0x0000000000000000	# TSS desc
-	.quad	0x0000000000000000	# LDT desc
+	.quad	0x0000000000000000	# TSS0 desc
+	.quad	0x0000000000000000	# LDT0 desc
+	.quad	0x0000000000000000	# TSS1 desc
+	.quad	0x0000000000000000	# LDT1 desc
 
 gdt_ptr:
 	.word	. - gdt -1		# Limit
