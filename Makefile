@@ -1,5 +1,5 @@
 CFLAGS 	= -W -Wall -Wno-main -fomit-frame-pointer -nostdinc -Iinclude 
-SYSOBJS = boot/head.o kernel.o main.o
+SYSOBJS = boot/head.o kernel.o system_call.o main.o
 
 all: Image
 
@@ -24,6 +24,9 @@ main.o: main.c
 
 kernel.o: kernel.c head.h kernel.h
 	cc -c $(CFLAGS) kernel.c -o kernel.o
+
+system_call.o:system_call.s
+	as system_call.s -o system_call.o
 
 clean:
 	@rm -fv $(SYSOBJS) boot/boot.o boot/boot system *~ boot/*~

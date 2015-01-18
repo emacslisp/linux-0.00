@@ -125,4 +125,47 @@ __asm__ __volatile__(			\
 #define set_tss_desc(n,addr) _set_tssldt_desc(((char *) (n)),addr,"0x89") // TSS
 #define set_ldt_desc(n,addr) _set_tssldt_desc(((char *) (n)),addr,"0x82") // LDT
 
+/* setup system call gate descriptor at IDT[0x80]
+ We are in Level 3 and we want to call a kernel routine at level 0
+ using the instruction 'int'. INTEL 80386 Manual/section 6.4.3:
+
+ 	"To provide protection for control transfers among 
+ 	executable segments at different privilege levels, 
+ 	the 80386 uses gate descriptors."
+ 
+ That is, We can do that through a 'Trap gate' as it's done on linux-0.01. 
+
+			Trap gate descriptor (type=15 = 0xF)
+		  _____________________________________________________________
+		  |				| |   | |       | | | |       |
+		  |	   OFFSET 31..16	|P|DPL|0| TYPE  |0 0 0|unused | <-- EDX
+		  |_____________________________|_|_|_|_|1|1|1|1|_|_|_|_|_|_|_|
+		  |				|			      |
+		  |	      SELECTOR		|	OFFSET 15..0	      | <-- EAX
+		  |_____________________________|_____________________________|
+
+		  _____________________________________________________________
+		  |				| |   | |       | | | |       |
+		  |  &system_call 31..16	|1|1 1|0| TYPE  |0 0 0| 0000  | <-- EDX
+		  |_____________________________|_|_|_|_|1|1|1|1|_|_|_|_|_|_|_|
+		  |				|			      |
+		  |	      0x0008		|	&system_call 15..0    | <-- EAX
+		  |_____________________________|_____________________________| <-- idt[0x80]
+
+*/
+
+#define set_system_gate(n,addr) _set_gate(&idt[n],15,3,addr)
+
+#define _set_gate(gate_addr,type,dpl,addr)		\
+__asm__ __volatile__(					\
+	"movw %%dx,%%ax\n\t"				\
+	"movw %0,%%dx\n\t"				\
+	"movl %%eax,%1\n\t"				\
+	"movl %%edx,%2"					\
+	: 						\
+	: "i" ((short) (0x8000+(dpl<<13)+(type<<8))), 	\
+	"o" (*((char *) (gate_addr))), 			\
+	"o" (*(4+(char *) (gate_addr))), 		\
+	"d" ((char *) (addr)),"a" (0x00080000))
+
 #endif 

@@ -21,6 +21,10 @@
 
     Will setup the stack and LDT and TSS descriptors in GDT.
 
+ - system_call.s
+   
+    contains the system call handler routine and the task.
+
  - booting the system
 
   1. make

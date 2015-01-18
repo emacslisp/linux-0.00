@@ -6,4 +6,5 @@ boot/*.o
 boot/boot
 system
 Image
-system.map 
+system.map
+

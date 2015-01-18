@@ -31,6 +31,8 @@ union task_union {	// max=STACK_SIZE - min=104 bytes
 
 static union task_union init_task = {INIT_TASK,};	// init_task is our task 'task'
 
+extern void system_call(void);
+
 void kernel_init(void)
 {
   set_tss_desc(&gdt[FIRST_TSS_ENTRY],&(init_task.task.tss));
@@ -38,4 +40,7 @@ void kernel_init(void)
 
   ltr(0);
   lldt(0);
+
+/* setup system call gate descriptor at IDT[0x80] */
+  set_system_gate(0x80, &system_call);
 }

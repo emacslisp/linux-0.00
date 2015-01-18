@@ -11,10 +11,7 @@
  *
 */
 
-TSS_SEL = 0x20
-LDT_SEL = 0x28
-
-	.global	startup_32, gdt, idt, task
+	.global	startup_32, gdt, idt
 	.text
 
 startup_32:
@@ -116,25 +113,11 @@ idt_ptr:
 gdt:	.quad	0x0000000000000000	# NULL descriptor!
 	.quad	0x00c09a00000007ff	# 8Mb code segment (CS=0x08), base = 0x0000
 	.quad	0x00c09200000007ff	# 8Mb data segment (DS=SS=0x10), base = 0x0000
-	.quad	0x00c0f20b80000001	# 4Kb video memory (Sel=0x18) - with ** DPL=3! ** 
-	.quad	0x0000000000000000	# TSS_SEL
-	.quad	0x0000000000000000	# LDT_SEL
+	.quad	0x00c0920b80000001	# 4Kb video memory (Sel=0x18) - with ** DPL=0! ** 
+	.quad	0x0000000000000000	# TSS desc
+	.quad	0x0000000000000000	# LDT desc
 
 gdt_ptr:
 	.word	. - gdt -1		# Limit
 	.long	gdt			# Base: pointer to the first GDT entry (the NULL descr) 
 	
-
-######################################### * the task's purpose
-
-task:
-	mov	$0x18, %eax
-	mov	%ax, %gs
-	xor	%ebx, %ebx
-	mov	$'A, %ebx		# print 'A' on the screen
-	movb	%bl, %gs:0
-	mov	$0x2f, %ebx
-	movb	%bl, %gs:1
-
-1:	jmp	1b			# stay here!
-
