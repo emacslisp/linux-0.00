@@ -16,10 +16,8 @@
  - kernel.s
 
     kernel.s is a small kernel that run in 32-bit protected mode. 
-    It dosen't handle interrupts. It will just print a 'A' on the screen, saying 
-    that our boot.s program is reliable and did what we expected from him!
-
-    The kernel has a 32 entries (words) stack.  
+    It will setup GDT, IDT switch to user mode and execute a simple user task 
+    which will print a 'A' on the screen.
 
  - booting the system
 
