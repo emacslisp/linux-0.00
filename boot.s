@@ -1,8 +1,8 @@
 /*
 |	boot.s
 
-*   This is a rewriting of the linux-0.01 boot.s, using the 
-*   GNU assembler syntax with some modifications in the code.
+*   This is a rewriting of the linux-0.01/boot.s, using the 
+*   GNU assembler syntax with some modifications.
 
 | boot.s is loaded at 0x7c00 by the bios-startup routines, and moves itself
 | out of the way to address 0x90000, and jumps there.
