@@ -4,7 +4,7 @@
    A 32 bit code, running in 386 protected mode. It will setup IDT, GDT, 
    segment registres, enable interrupts and transfer the control 
    to a user mode (level 3) task which will just print 'A' on
-   the screen.
+   the screen by calling a system call.
 
    copyright(C) 2015 Issam Abdallah, Tunisia.
    E-mail: iabdallah@yandex.com
@@ -54,6 +54,10 @@ startup_32:
 	mov 	%ax, %fs 
 	mov 	%ax, %gs
 	lss	kern_stack_ptr, %esp
+
+######################################### * setup system call gate descriptor
+
+	call	set_system_gate
 
 ######################################### * Move to user mode (task)
 ## NOTE: IRET will cause the processor to automatically switch to another task if NT=1! 
@@ -127,6 +131,38 @@ rp_sidt:
 	lidt	idt_ptr
 	ret
 
+/* system call 
+
+		Trap gate descriptor (type=15 = 0xF)
+  _____________________________________________________________
+  |				| |   | |       | | | |       |
+  |	   OFFSET 31..16	|P|DPL|0| TYPE  |0 0 0|unused | <-- EDX
+  |_____________________________|_|_|_|_|1|1|1|1|_|_|_|_|_|_|_|
+  |				|			      |
+  |	      SELECTOR		|	OFFSET 15..0	      | <-- EAX
+  |_____________________________|_____________________________|
+
+  _____________________________________________________________
+  |				| |   | |       | | | |       |
+  |  &system_call 31..16	|1|1 1|0| TYPE  |0 0 0| 0000  | <-- EDX
+  |_____________________________|_|_|_|_|1|1|1|1|_|_|_|_|_|_|_|
+  |				|			      |
+  |	      0x0008		|	&system_call 15..0    | <-- EAX
+  |_____________________________|_____________________________| <-- idt[0x80]
+
+*/
+set_system_gate:
+	movl	$0x80, %ecx
+	lea	idt(,%ecx,8), %edi	# IDT[0x80]: system call gate
+	mov	$0x80000, %eax		# CS = 0x8
+	lea	system_call, %edx
+
+	mov	%dx, %ax
+	mov	%eax, (%edi)
+	mov	$0xef00, %dx		# interrupt gate: Present, DPL=3, type=15
+	mov	%edx, 4(%edi)
+	ret
+
 ######################################### * Default ISR
 
 ignore_int:
@@ -145,6 +181,29 @@ set_tssldt_des:
 	movb	%ah, 7(%edi)		# base 31..24
 	ret
 
+#########################################
+
+	.balign	2
+system_call:
+	push	%eax
+	push	%gs
+	push	%ecx
+	push	%edx
+
+	mov	$0x18, %eax		# GDT[3] - video memory
+	mov	%ax, %gs
+
+	mov	$'A, %ecx		# print 'A'
+	movb	%cl, %gs:0
+	mov	$0x2f, %edx	
+	movb	%dl, %gs:1
+
+	pop	%edx
+	pop	%ecx
+	pop	%gs
+	pop	%eax
+	iret
+
 ######################################### * Setup IDT
 	.balign	8			# align to 8 bytes to increase IDT access speed - (only 1 bus cycle)
 idt:	.fill	256, 8, 0		# reserve 256 idt entries - (IDT is not yet initialized!)
@@ -159,7 +218,7 @@ idt_ptr:
 gdt:	.quad	0x0000000000000000	# NULL descriptor!
 	.quad	0x00c09a00000007ff	# 8Mb code segment (CS=0x08), base = 0x0000
 	.quad	0x00c09200000007ff	# 8Mb data segment (DS=SS=0x10), base = 0x0000
-	.quad	0x00c0f20b80000001	# 4Kb video memory (Sel=0x18) - with ** DPL=3! ** 
+	.quad	0x00c0920b80000001	# 4Kb video memory (Sel=0x18) - with ** DPL=0! ** 
 	.quad	0x0000890000000068	# TSS descriptor (Selector = 0x20) - Granularity = 0
 	.quad	0x0000820000000040	# LDT descr (Selector = 0x28) - Granularity = 0
 
@@ -212,14 +271,7 @@ stack_ptr0:				# task is ESP0
 ######################################### * the task's purpose
 
 task:
-	mov	$0x18, %eax
-	mov	%ax, %gs
-	xor	%ebx, %ebx
-	mov	$'A, %ebx		# print 'A' on the screen
-	movb	%bl, %gs:0
-	mov	$0x2f, %ebx
-	movb	%bl, %gs:1
-
+	int	$0x80
 1:	jmp	1b			# stay here!
 
 ######################################### * the task's level-3 stack
