@@ -190,8 +190,7 @@ __asm__ __volatile__(			\
 	::"a" (addr), "m" (*(n)),	\
 	  "m" (*(n+2)), "m" (*(n+4)), 	\
 	 "m" (*(n+5)), "m" (*(n+6)),	\
-	 "m" (*(n+7))			\
-	)
+	 "m" (*(n+7)): "cc")
 
 #define set_tss_desc(n,addr) _set_tssldt_desc(((char *) (n)),addr,"0x89") // TSS
 #define set_ldt_desc(n,addr) _set_tssldt_desc(((char *) (n)),addr,"0x82") // LDT
