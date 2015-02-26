@@ -8,7 +8,7 @@
   Torvalds and it was abandoned.
 
 	" it switched between two processes that printed AAAA... and BBBB... respectively 
-	  by using the timer-interrupt - Gods I was proud over that" --- Linus Torvalds
+	  by using the timer-interrupt - God I was proud over that" --- Linus Torvalds
 
   Two level-3 tasks run in user  mode, scheduled by the timer interrupt and  use a system
   call to print 'A' and 'B' on the screen.As we don't have a fork and execve system calls 
