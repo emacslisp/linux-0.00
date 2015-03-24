@@ -46,12 +46,12 @@ SYSSIZE = 40				# >= size of 'Image' in sectors (512 bytes)
 	rep 
 	movsw				# move word by word
 
-	ljmp	$BOOTSEG, $go		# jump to 0x90000
+	ljmp	$INITSEG, $go		# jump to 0x90000
 
 ######################################### * Initialize segment registers
 
 go: 
-	mov 	$BOOTSEG, %ax 	
+	mov 	%cs, %ax 	
 	mov 	%ax, %ds		# ES = CS!
 	mov 	%ax, %es		# ES = DS!
 	mov 	%ax, %ss		# optional
@@ -190,7 +190,7 @@ end_move:
 					# section: Mixing 16-bit and 32-bit code
 
 	.byte	0x66, 0xea		# prefix (0x66) + ljmp opcode (0xea)
-	.long	ok_pm + 0x7c00		# offset must be a physical address (we are no longer in real mode!)
+	.long	ok_pm + 0x90000		# offset must be a physical address (we are no longer in real mode!)
 	.word	0x8			# CS = 0x8: GDT[1]
 
 	.code32
@@ -248,7 +248,7 @@ gdt_ds_desc:
 
 gdt_ptr:
 	.word	. - gdt - 1		# Limit = (8*3) - 1
-	.long	0x7c00 + gdt		# Base = (0x7c0 << 4) + offset (must be a physical address!)
+	.long	0x90000 + gdt		# Base - must be a physical address!
 
 ######################################### * msg
 
